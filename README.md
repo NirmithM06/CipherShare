@@ -64,6 +64,36 @@ It combines symmetric and asymmetric cryptography with integrity verification, d
 - Avalanche effect analysis.
 
 ---
+## 📸 Application Screenshots
+
+### Secure File Sharing
+![Secure File Sharing](docs/screenshots/file-sharing.png)
+
+### Inbox
+![Inbox](docs/screenshots/inbox.png)
+
+### Security Monitoring & Intrusion Detection
+![Security Monitor](docs/screenshots/security-monitor.png)
+
+### Performance Analytics
+![Performance Analytics](docs/screenshots/performance-analytics.png)
+
+### Digital Signatures
+![Digital Signatures](docs/screenshots/digital-signatures.png)
+
+### Cryptographic Analysis
+
+**Avalanche Effect**
+
+![Avalanche Effect](docs/screenshots/avalanche-effect.png)
+
+**Hash Security Analysis**
+
+![Hash Security](docs/screenshots/hash-security.png)
+
+### Cryptographic Performance
+![Cryptographic Performance](docs/screenshots/crypto-performance.png)
+
 
 ## 🛠️ Technology Stack
 
