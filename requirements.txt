@@ -1,0 +1,8 @@
+Flask
+Werkzeug
+pycryptodome
+pyshark
+pytest
+Flask-Session
+matplotlib
+dpkt

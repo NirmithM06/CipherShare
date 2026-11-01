@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% set active_page = "digital_signatures" %}
+{% block title %}Digital Signatures — CipherShare{% endblock %}
+{% block page_title %}Digital Signatures{% endblock %}
+{% block page_subtitle %}RSA-PSS with SHA-256 signature generation and verification{% endblock %}
+
+{% block content %}
+<div class="two-col">
+    <!-- Sign -->
+    <div class="card">
+        <div class="card-header"><h3 class="card-title">✍️ Generate Signature</h3></div>
+        <div class="form-group">
+            <label for="signMessage">Message to sign</label>
+            <textarea id="signMessage" class="form-control" rows="4" placeholder="Enter your message…"></textarea>
+        </div>
+        <button class="btn btn-primary" id="signBtn" onclick="signMsg()">Sign Message</button>
+        <div id="sign-result" class="hidden mt-2">
+            <div class="result-item"><span class="result-label">Algorithm</span><span class="result-value text-cyan" id="sig-algo">—</span></div>
+            <div class="result-item"><span class="result-label">Signature Size</span><span class="result-value" id="sig-size">—</span></div>
+            <div class="result-item"><span class="result-label">Signing Time</span><span class="result-value" id="sig-time">—</span></div>
+            <div class="form-group mt-2">
+                <label>Signature (Base64)</label>
+                <div class="code-block" id="sig-data" style="font-size:.7rem;cursor:pointer" onclick="copyToClipboard(this.textContent)"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Verify -->
+    <div class="card">
+        <div class="card-header"><h3 class="card-title">✅ Verify Signature</h3></div>
+        <div class="form-group">
+            <label for="verifyMessage">Message</label>
+            <textarea id="verifyMessage" class="form-control" rows="3" placeholder="Enter the original or modified message…"></textarea>
+        </div>
+        <div class="form-group">
+            <label>Select stored signature</label>
+            <select id="sigSelect" class="form-control" onchange="loadSig()">
+                <option value="">— Select —</option>
+                {% for s in signatures %}
+                <option value="{{ s.id }}">{{ s.timestamp|format_ist }} — {{ s.message[:40] }}{% if s.message|length > 40 %}…{% endif %}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="btn-group">
+            <button class="btn btn-success" onclick="verifyMsg()">Verify</button>
+            <button class="btn btn-secondary" onclick="verifyModified()">Verify Modified Message</button>
+        </div>
+        <div id="verify-result" class="hidden mt-2"></div>
+        <div id="verify-metrics" class="hidden">
+            <div class="result-item"><span class="result-label">Verification Time</span><span class="result-value" id="ver-time">—</span></div>
+        </div>
+    </div>
+</div>
+
+<!-- Stored Signatures -->
+<div class="card">
+    <div class="card-header"><h3 class="card-title">📋 Stored Signatures</h3></div>
+    <div class="table-container" style="border:none">
+        <table class="data-table" id="sigTable">
+            <thead><tr><th>ID</th><th>Timestamp</th><th>Message</th><th>Algorithm</th><th>Actions</th></tr></thead>
+            <tbody>
+            {% for s in signatures %}
+            <tr>
+                <td>#{{ s.id }}</td>
+                <td style="font-size:.8rem;color:var(--text-muted);white-space:nowrap" title="{{ s.timestamp|format_ist }}">{{ s.timestamp|format_ist }}</td>
+                <td>{{ s.message[:50] }}{% if s.message|length > 50 %}…{% endif %}</td>
+                <td><span class="badge badge-accent">{{ s.algorithm }}</span></td>
+                <td><button class="btn btn-sm btn-secondary" onclick="selectSig({{ s.id }})">Select</button></td>
+            </tr>
+            {% endfor %}
+            {% if not signatures %}<tr><td colspan="5" class="text-center text-muted" style="padding:20px">No signatures yet. Generate one above.</td></tr>{% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let lastSigData=null;
+async function signMsg(){
+    const msg=document.getElementById('signMessage').value.trim();
+    if(!msg){showToast('Enter message','error');return;}
+    const btn=document.getElementById('signBtn');
+    btn.disabled=true;btn.innerHTML='<span class="spinner"></span> Signing…';
+    try{
+        const r=await fetch('/api/signature/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg})});
+        const d=await r.json(); if(d.error){showToast(d.error,'error');return;}
+        lastSigData=d;
+        document.getElementById('sig-algo').textContent=d.algorithm;
+        document.getElementById('sig-size').textContent=d.signature_size+' bytes';
+        document.getElementById('sig-time').textContent=d.signing_time_ms+' ms';
+        document.getElementById('sig-data').textContent=d.signature_b64;
+        document.getElementById('sign-result').classList.remove('hidden');
+        document.getElementById('verifyMessage').value=msg;
+        showToast('Signature generated & stored','success');
+        setTimeout(()=>location.reload(),1500);
+    }catch(e){showToast('Signing failed','error');}
+    finally{btn.disabled=false;btn.innerHTML='Sign Message';}
+}
+function selectSig(id){document.getElementById('sigSelect').value=id;loadSig();}
+async function loadSig(){
+    const id=document.getElementById('sigSelect').value;
+    if(!id)return;
+    const r=await fetch('/api/signature/list');
+    const list=await r.json();
+    const sig=list.find(s=>s.id==id);
+    if(sig) document.getElementById('verifyMessage').value=sig.message;
+}
+async function verifyMsg(){
+    const id=document.getElementById('sigSelect').value;
+    const msg=document.getElementById('verifyMessage').value.trim();
+    if(!id&&!lastSigData){showToast('Select a signature','error');return;}
+    const body={message:msg};
+    if(id) body.signature_id=parseInt(id);
+    else if(lastSigData){body.signature_b64=lastSigData.signature_b64;body.public_key=lastSigData.public_key;}
+    const r=await fetch('/api/signature/verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const d=await r.json(); if(d.error){showToast(d.error,'error');return;}
+    const el=document.getElementById('verify-result');
+    el.className=d.valid?'verification-result valid':'verification-result invalid';
+    el.innerHTML='<div class="result-icon">'+(d.valid?'✓':'✗')+'</div><div class="result-text">'+(d.valid?'VALID':'INVALID')+'</div>';
+    el.classList.remove('hidden');
+    document.getElementById('ver-time').textContent=d.verification_time_ms+' ms';
+    document.getElementById('verify-metrics').classList.remove('hidden');
+}
+function verifyModified(){
+    const ta=document.getElementById('verifyMessage');
+    ta.value=ta.value+' (tampered)';
+    verifyMsg();
+}
+</script>
+{% endblock %}

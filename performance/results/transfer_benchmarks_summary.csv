@@ -1,0 +1,16 @@
+file_size_bytes,file_size_label,operation,repeats,mean_duration_ms,median_duration_ms,mean_throughput_mb_s,median_throughput_mb_s
+1024,1_KB,e2e_upload,2,100.3918,100.3918,0.01,0.01
+1024,1_KB,e2e_download,2,87.3098,87.3098,0.01,0.01
+1024,1_KB,total_e2e_roundtrip,2,187.7016,187.7016,0.01,0.01
+102400,100_KB,e2e_upload,2,83.9687,83.9687,1.16,1.16
+102400,100_KB,e2e_download,2,126.5343,126.5343,0.77,0.77
+102400,100_KB,total_e2e_roundtrip,2,210.503,210.503,0.93,0.93
+1048576,1_MB,e2e_upload,2,90.6757,90.6757,11.03,11.03
+1048576,1_MB,e2e_download,2,90.6763,90.6763,11.03,11.03
+1048576,1_MB,total_e2e_roundtrip,2,181.352,181.352,11.03,11.03
+5242880,5_MB,e2e_upload,2,135.1382,135.1382,37.0,37.0
+5242880,5_MB,e2e_download,2,123.036,123.036,40.64,40.64
+5242880,5_MB,total_e2e_roundtrip,2,258.1741,258.1741,38.73,38.73
+10485760,10_MB,e2e_upload,2,190.3347,190.3347,52.54,52.54
+10485760,10_MB,e2e_download,2,171.5922,171.5922,58.28,58.28
+10485760,10_MB,total_e2e_roundtrip,2,361.9269,361.9269,55.26,55.26

@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% set active_page = "file_sharing" %}
+{% block title %}File Sharing — CipherShare{% endblock %}
+{% block page_title %}Secure File Sharing{% endblock %}
+{% block page_subtitle %}Confidentiality (AES-256-CBC + RSA-OAEP), Integrity (HMAC-SHA256 & SHA-256), and Authenticity (RSA-PSS){% endblock %}
+
+{% block content %}
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}<ul class="flashes">{% for cat,msg in messages %}<li class="{{ cat }}">{{ msg }}</li>{% endfor %}</ul>{% endif %}
+{% endwith %}
+
+{% if upload_summary %}
+<!-- Processing Summary Card -->
+<div class="card" style="border: 1px solid var(--accent); background: rgba(99, 102, 241, 0.05); margin-bottom: 24px;">
+    <div class="card-header">
+        <h3 class="card-title">✨ Cryptographic Upload Processing Summary</h3>
+        <span class="badge badge-success">File Transferred Securely</span>
+    </div>
+    <p class="text-muted mb-2">The uploaded file <strong>{{ upload_summary.filename }}</strong> ({{ (upload_summary.file_size_bytes / 1024)|round(2) }} KB) was automatically secured through all cryptographic pipeline stages:</p>
+    
+    <div class="metrics-grid">
+        <div class="metric-card accent">
+            <span class="metric-value">✓ Completed</span>
+            <span class="metric-label">AES-256-CBC Enc ({{ upload_summary.enc_time_ms }} ms)</span>
+        </div>
+        <div class="metric-card cyan">
+            <span class="metric-value">✓ Generated</span>
+            <span class="metric-label">HMAC-SHA256 ({{ upload_summary.hmac_time_ms }} ms)</span>
+        </div>
+        <div class="metric-card warning-c">
+            <span class="metric-value">✓ Hashed</span>
+            <span class="metric-label">SHA-256 Digest ({{ upload_summary.hash_time_ms }} ms)</span>
+        </div>
+        <div class="metric-card success-c">
+            <span class="metric-value">✓ Signed</span>
+            <span class="metric-label">RSA-PSS ({{ upload_summary.sig_time_ms }} ms)</span>
+        </div>
+    </div>
+
+    <div class="two-col mt-2">
+        <div>
+            <label class="text-muted" style="font-size:0.8rem">Original File SHA-256 Digest</label>
+            <div class="code-block flex-between" style="font-size:0.75rem;cursor:pointer" onclick="copyToClipboard('{{ upload_summary.file_hash }}')" title="Click to copy">
+                <span style="font-family:monospace;color:var(--text)">{{ upload_summary.file_hash }}</span>
+                <span class="badge badge-sm badge-accent">Copy</span>
+            </div>
+        </div>
+        <div>
+            <label class="text-muted" style="font-size:0.8rem">Total Cryptographic Processing Time</label>
+            <div class="code-block" style="font-size:0.8rem;color:var(--cyan)">
+                ⏱️ {{ upload_summary.total_crypto_ms }} ms total computation
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="two-col">
+    <div class="card">
+        <div class="card-header"><h3 class="card-title">Send Encrypted &amp; Signed File</h3></div>
+        <form action="{{ url_for('dashboard') }}" method="post" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="receiver">Send to</label>
+                <select id="receiver" name="receiver_id" class="form-control" required>
+                    <option value="">— Select recipient —</option>
+                    {% for u in users %}
+                    <option value="{{ u.id }}">{{ u.username }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>File</label>
+                <div class="upload-area" id="fileUploadArea" onclick="document.getElementById('fileInput').click()">
+                    <svg viewBox="0 0 24 24" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    <p class="upload-text" id="uploadLabel">Click to choose a file</p>
+                    <p class="upload-hint">Any file type supported (PDF, PNG, JPG, TXT, DOCX, etc.)</p>
+                </div>
+                <input type="file" id="fileInput" name="file" style="display:none" required onchange="updateLabel(this)">
+            </div>
+            <button type="submit" class="btn btn-primary w-full" style="justify-content:center">🔒 Encrypt, Hash, Sign &amp; Send</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><h3 class="card-title">Security &amp; Cryptographic Pipeline</h3></div>
+        <div class="result-item"><span class="result-label">Confidentiality</span><span class="result-value text-cyan">AES-256-CBC</span></div>
+        <div class="result-item"><span class="result-label">Key Encapsulation</span><span class="result-value text-cyan">RSA-2048 OAEP</span></div>
+        <div class="result-item"><span class="result-label">Key Derivation</span><span class="result-value text-cyan">HKDF-SHA256</span></div>
+        <div class="result-item"><span class="result-label">Payload Integrity</span><span class="result-value text-cyan">HMAC-SHA256</span></div>
+        <div class="result-item"><span class="result-label">Plaintext Fingerprint</span><span class="result-value text-cyan">SHA-256 Digest</span></div>
+        <div class="result-item"><span class="result-label">Authenticity &amp; Non-Repudiation</span><span class="result-value text-cyan">RSA-PSS (SHA-256)</span></div>
+        <div class="result-item"><span class="result-label">IV Generation</span><span class="result-value text-cyan">16-byte cryptographically secure random</span></div>
+        <div class="section-divider"></div>
+        <p class="text-muted" style="font-size:.85rem">Every file is hashed before encryption and digitally signed with your persistent RSA private key. The encrypted payload is protected by HMAC and stored securely on the server.</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function updateLabel(input){
+    if(input.files.length){
+        document.getElementById('uploadLabel').textContent=input.files[0].name;
+        document.getElementById('fileUploadArea').style.borderColor='var(--accent)';
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Account — CipherShare</title>
+    <meta name="description" content="Create your secure end-to-end cryptographic file sharing account on CipherShare">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div class="auth-page">
+    <main class="auth-card fade-in">
+        <!-- Visual Hierarchy: Brand & Header -->
+        <header class="auth-header">
+            <div class="auth-brand-badge">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                </svg>
+                <span>Cryptographic Key Provisioning</span>
+            </div>
+            <div class="auth-logo-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="white">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" fill="none" stroke="white" stroke-width="2"/>
+                </svg>
+            </div>
+            <h1 class="auth-title">Create Account</h1>
+            <p class="auth-subtitle">Join the zero-knowledge encrypted file sharing network</p>
+        </header>
+
+        <!-- Flash Alert Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <ul class="flashes">
+            {% for cat, msg in messages %}
+            <li class="{{ cat }}">
+                {% if cat == 'error' %}
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--error)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px;">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                {% else %}
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px;">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+                {% endif %}
+                <span>{{ msg }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+        {% endwith %}
+
+        <!-- Registration Form -->
+        <form method="post" action="{{ url_for('auth.register') }}" class="auth-form" id="registerForm">
+            <!-- Username Input Field -->
+            <div class="form-group">
+                <label for="username">Username</label>
+                <div class="input-icon-wrapper">
+                    <svg class="input-prefix-icon" viewBox="0 0 24 24">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                    <input 
+                        type="text" 
+                        id="username" 
+                        name="username" 
+                        class="form-control input-with-icon" 
+                        placeholder="Choose a unique username" 
+                        required 
+                        autocomplete="username"
+                        spellcheck="false"
+                        autofocus
+                    >
+                </div>
+            </div>
+
+            <!-- Password Input Field with Visibility Toggle -->
+            <div class="form-group">
+                <label for="password">Password / Passphrase</label>
+                <div class="input-icon-wrapper">
+                    <svg class="input-prefix-icon" viewBox="0 0 24 24">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="password" 
+                        class="form-control input-with-icon input-with-toggle" 
+                        placeholder="Create a strong password" 
+                        required 
+                        autocomplete="new-password"
+                        oninput="updatePasswordStrength(this.value)"
+                    >
+                    <button 
+                        type="button" 
+                        class="password-toggle-btn" 
+                        id="passwordToggleBtn"
+                        onclick="togglePasswordVisibility('password', this)" 
+                        title="Show or hide password" 
+                        aria-label="Toggle password visibility"
+                        tabindex="-1"
+                    >
+                        <!-- Eye Icon (hidden state) -->
+                        <svg class="eye-show" viewBox="0 0 24 24">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                        <!-- Eye Off Icon (visible state, hidden by default) -->
+                        <svg class="eye-hide hidden" viewBox="0 0 24 24">
+                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                            <line x1="1" y1="1" x2="23" y2="23"></line>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Password Strength Feedback & Requirements -->
+                <div class="password-strength-container" id="strengthContainer">
+                    <div class="strength-meta">
+                        <span class="strength-label">Password Strength:</span>
+                        <span class="strength-rating" id="strengthText">Enter password</span>
+                    </div>
+                    <div class="strength-bars">
+                        <div class="strength-bar" id="bar1"></div>
+                        <div class="strength-bar" id="bar2"></div>
+                        <div class="strength-bar" id="bar3"></div>
+                        <div class="strength-bar" id="bar4"></div>
+                    </div>
+                    <ul class="password-req-list">
+                        <li class="password-req-item" id="reqLength">
+                            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle></svg>
+                            <span>At least 8 characters</span>
+                        </li>
+                        <li class="password-req-item" id="reqChars">
+                            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle></svg>
+                            <span>Includes letters &amp; numbers or symbols</span>
+                        </li>
+                        <li class="password-req-item" id="reqNotice" style="color:var(--text-muted);font-size:0.71rem;margin-top:2px;">
+                            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle></svg>
+                            <span>Encrypts your RSA-2048 private key locally</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Submit Button with Dynamic Loading Feedback -->
+            <button type="submit" id="submitBtn" class="btn btn-primary btn-lg" style="width:100%;justify-content:center;margin-top:6px;">
+                <span id="btnText">Create Secure Account</span>
+                <svg id="btnIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                    <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+            </button>
+        </form>
+
+        <!-- Navigation and Links -->
+        <footer class="auth-links">
+            <div>
+                Already have an account? 
+                <a href="{{ url_for('auth.login') }}" style="font-weight:600;">Sign in here</a>
+            </div>
+            <div style="margin-top:14px;font-size:0.8rem;">
+                <a href="{{ url_for('index') }}" style="color:var(--text-muted);display:inline-flex;align-items:center;gap:4px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="19" y1="12" x2="5" y2="12"></line>
+                        <polyline points="12 19 5 12 12 5"></polyline>
+                    </svg>
+                    <span>Back to Homepage</span>
+                </a>
+            </div>
+        </footer>
+    </main>
+</div>
+
+<script>
+/**
+ * Toggle password input visibility between 'password' and 'text'.
+ */
+function togglePasswordVisibility(inputId, btn) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const isPassword = input.type === 'password';
+    input.type = isPassword ? 'text' : 'password';
+    
+    const eyeShow = btn.querySelector('.eye-show');
+    const eyeHide = btn.querySelector('.eye-hide');
+    if (eyeShow && eyeHide) {
+        eyeShow.classList.toggle('hidden', isPassword);
+        eyeHide.classList.toggle('hidden', !isPassword);
+    }
+}
+
+/**
+ * Real-time password strength and requirement feedback.
+ */
+function updatePasswordStrength(val) {
+    const bars = [
+        document.getElementById('bar1'),
+        document.getElementById('bar2'),
+        document.getElementById('bar3'),
+        document.getElementById('bar4')
+    ];
+    const strengthText = document.getElementById('strengthText');
+    const reqLength = document.getElementById('reqLength');
+    const reqChars = document.getElementById('reqChars');
+
+    if (!val) {
+        bars.forEach(b => b.style.backgroundColor = 'rgba(255,255,255,0.1)');
+        strengthText.textContent = 'Enter password';
+        strengthText.style.color = 'var(--text-muted)';
+        setReqStatus(reqLength, false);
+        setReqStatus(reqChars, false);
+        return;
+    }
+
+    // Check requirements
+    const hasLength = val.length >= 8;
+    const hasLetters = /[a-zA-Z]/.test(val);
+    const hasNumbersOrSpecial = /[\d\W]/.test(val);
+    const hasBoth = hasLetters && hasNumbersOrSpecial;
+
+    setReqStatus(reqLength, hasLength);
+    setReqStatus(reqChars, hasBoth);
+
+    // Calculate score (1 to 4)
+    let score = 0;
+    if (val.length >= 6) score++;
+    if (val.length >= 8) score++;
+    if (hasBoth) score++;
+    if (val.length >= 12 && /[A-Z]/.test(val) && /[a-z]/.test(val) && /\d/.test(val) && /\W/.test(val)) score++;
+
+    // Color and label mappings
+    const levels = [
+        { label: 'Weak', color: '#ef4444' },
+        { label: 'Fair', color: '#f59e0b' },
+        { label: 'Good', color: '#06b6d4' },
+        { label: 'Strong', color: '#10b981' }
+    ];
+
+    const currentLevel = levels[Math.min(score - 1, 3)] || levels[0];
+    strengthText.textContent = currentLevel.label;
+    strengthText.style.color = currentLevel.color;
+
+    bars.forEach((bar, idx) => {
+        if (idx < score) {
+            bar.style.backgroundColor = currentLevel.color;
+        } else {
+            bar.style.backgroundColor = 'rgba(255,255,255,0.1)';
+        }
+    });
+}
+
+function setReqStatus(el, met) {
+    if (!el) return;
+    el.classList.toggle('met', met);
+    const svg = el.querySelector('svg');
+    if (svg) {
+        if (met) {
+            svg.innerHTML = '<polyline points="20 6 9 17 4 12"></polyline>';
+        } else {
+            svg.innerHTML = '<circle cx="12" cy="12" r="10"></circle>';
+        }
+    }
+}
+
+// Visual loading feedback during RSA keypair generation on registration
+document.getElementById('registerForm').addEventListener('submit', function(e) {
+    const btn = document.getElementById('submitBtn');
+    const btnText = document.getElementById('btnText');
+    const btnIcon = document.getElementById('btnIcon');
+    if (btn && btnText) {
+        btnText.innerHTML = '<span class="spinner-sm" style="margin-right:8px;"></span>Provisioning RSA Keypairs&hellip;';
+        if (btnIcon) btnIcon.classList.add('hidden');
+    }
+});
+</script>
+</body>
+</html>

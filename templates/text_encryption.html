@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% set active_page = "text_encryption" %}
+{% block title %}Text Encryption — CipherShare{% endblock %}
+{% block page_title %}Text Encryption{% endblock %}
+{% block page_subtitle %}Encrypt and decrypt text using AES-256-CBC{% endblock %}
+
+{% block content %}
+<div class="two-col">
+    <!-- Left: Plaintext input -->
+    <div class="card">
+        <div class="card-header"><h3 class="card-title">Plaintext</h3></div>
+        <div class="form-group">
+            <label for="plaintext">Enter text to encrypt</label>
+            <textarea id="plaintext" class="form-control" rows="8" placeholder="Type or paste your plaintext here…"></textarea>
+        </div>
+        <div class="btn-group">
+            <button class="btn btn-primary" id="encryptBtn" onclick="encryptText()">🔒 Encrypt</button>
+            <button class="btn btn-secondary" onclick="document.getElementById('plaintext').value='';clearResults()">Clear</button>
+        </div>
+    </div>
+
+    <!-- Right: Ciphertext output -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Ciphertext</h3>
+            <button class="btn btn-sm btn-secondary" onclick="copyCiphertext()">Copy</button>
+        </div>
+        <div id="ciphertext-display" class="code-block" style="min-height:160px;color:var(--cyan)">Ciphertext will appear here after encryption…</div>
+    </div>
+</div>
+
+<!-- Encryption metrics -->
+<div id="enc-metrics" class="card hidden">
+    <div class="card-header"><h3 class="card-title">Encryption Results</h3></div>
+    <div class="metrics-grid" style="margin-bottom:0">
+        <div class="metric-card accent"><span class="metric-value" id="m-algo">—</span><span class="metric-label">Algorithm</span></div>
+        <div class="metric-card cyan"><span class="metric-value" id="m-enc-time">—</span><span class="metric-label">Encryption Time</span></div>
+        <div class="metric-card success-c"><span class="metric-value" id="m-pt-size">—</span><span class="metric-label">Plaintext Size</span></div>
+        <div class="metric-card warning-c"><span class="metric-value" id="m-ct-size">—</span><span class="metric-label">Ciphertext Size</span></div>
+    </div>
+</div>
+
+<!-- Decryption section -->
+<div id="dec-section" class="card hidden">
+    <div class="card-header"><h3 class="card-title">Decryption</h3></div>
+    <div class="btn-group mb-2">
+        <button class="btn btn-success" onclick="decryptText()">🔓 Decrypt</button>
+    </div>
+    <div id="dec-result" class="hidden">
+        <div class="form-group">
+            <label>Recovered Plaintext</label>
+            <div id="recovered-text" class="code-block" style="color:var(--success)"></div>
+        </div>
+        <div class="result-item"><span class="result-label">Decryption Time</span><span class="result-value" id="m-dec-time">—</span></div>
+        <div class="result-item"><span class="result-label">Match Verification</span><span class="result-value" id="m-match">—</span></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let encData = null;
+function clearResults(){ encData=null; document.getElementById('enc-metrics').classList.add('hidden'); document.getElementById('dec-section').classList.add('hidden'); document.getElementById('dec-result').classList.add('hidden'); document.getElementById('ciphertext-display').textContent='Ciphertext will appear here after encryption…'; }
+
+async function encryptText(){
+    const pt = document.getElementById('plaintext').value.trim();
+    if(!pt){ showToast('Please enter plaintext','error'); return; }
+    const btn = document.getElementById('encryptBtn');
+    btn.disabled=true; btn.innerHTML='<span class="spinner"></span> Encrypting…';
+    try{
+        const r = await fetch('/api/text/encrypt',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plaintext:pt})});
+        const d = await r.json();
+        if(d.error){ showToast(d.error,'error'); return; }
+        encData = d;
+        document.getElementById('ciphertext-display').textContent = d.ciphertext_hex;
+        document.getElementById('m-algo').textContent = d.algorithm;
+        document.getElementById('m-enc-time').textContent = d.encryption_time_ms + ' ms';
+        document.getElementById('m-pt-size').textContent = formatBytes(d.plaintext_size);
+        document.getElementById('m-ct-size').textContent = formatBytes(d.ciphertext_size);
+        document.getElementById('enc-metrics').classList.remove('hidden');
+        document.getElementById('dec-section').classList.remove('hidden');
+        showToast('Text encrypted successfully','success');
+    }catch(e){ showToast('Encryption failed: '+e,'error'); }
+    finally{ btn.disabled=false; btn.innerHTML='🔒 Encrypt'; }
+}
+
+async function decryptText(){
+    if(!encData){ showToast('No encrypted data available','error'); return; }
+    try{
+        const r = await fetch('/api/text/decrypt',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ciphertext_b64:encData.ciphertext_b64,key_b64:encData.key_b64,iv_b64:encData.iv_b64})});
+        const d = await r.json();
+        if(d.error){ showToast(d.error,'error'); return; }
+        document.getElementById('recovered-text').textContent = d.plaintext;
+        document.getElementById('m-dec-time').textContent = d.decryption_time_ms + ' ms';
+        const match = d.plaintext === encData.plaintext;
+        document.getElementById('m-match').innerHTML = match ? '<span class="text-success">✓ MATCH</span>' : '<span class="text-error">✗ MISMATCH</span>';
+        document.getElementById('dec-result').classList.remove('hidden');
+        showToast('Text decrypted successfully','success');
+    }catch(e){ showToast('Decryption failed: '+e,'error'); }
+}
+
+function copyCiphertext(){ if(encData) copyToClipboard(encData.ciphertext_hex); else showToast('Nothing to copy','error'); }
+</script>
+{% endblock %}

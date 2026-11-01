@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>429 Too Many Requests - CipherShare</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1 style="color: #e74c3c;">429 Too Many Requests</h1>
+            <p>Rate Limit / Availability Protection</p>
+        </header>
+        <main>
+            <div class="welcome-box" style="border-left: 5px solid #e74c3c; background-color: #fdf2f2; text-align: left;">
+                <h3 style="margin-top: 0; color: #c0392b;">Request Threshold Exceeded</h3>
+                <p>{{ message }}</p>
+                {% if retry_after %}
+                <p><strong>Retry available in:</strong> <span id="cooldown-timer" class="status-cooldown">{{ retry_after }}</span> seconds</p>
+                {% endif %}
+            </div>
+            
+            <div class="action-links" style="margin-top: 25px;">
+                <a href="{{ url_for('dashboard') }}" class="btn">Return to Dashboard</a>
+                <a href="{{ url_for('auth.login') }}" class="btn btn-outline">Back to Login</a>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

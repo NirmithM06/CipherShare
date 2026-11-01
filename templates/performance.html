@@ -1,0 +1,287 @@
+{% extends "base.html" %}
+{% set active_page = "performance" %}
+{% block title %}Performance Analytics — CipherShare{% endblock %}
+{% block page_title %}Performance Analytics{% endblock %}
+{% block page_subtitle %}AES-256-CBC, RSA-OAEP, HKDF, HMAC-SHA256, SHA-256, and RSA-PSS actual measurements and benchmarks{% endblock %}
+
+{% block content %}
+<!-- Real-Time File Sharing Cryptographic Operation Breakdown -->
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">🚀 File Sharing Cryptographic Operations (Real Workload)</h3>
+        <button class="btn btn-sm btn-secondary" onclick="loadFileSharingPerf()">🔄 Refresh Live Data</button>
+    </div>
+    <p class="text-muted">Actual measurements recorded in database during live user file uploads and downloads. Displays execution timings for every cryptographic stage.</p>
+    
+    <div class="metrics-grid" id="fs-metrics-grid">
+        <div class="metric-card accent"><span class="metric-value" id="fs-total-ops">—</span><span class="metric-label">Logged Operations</span></div>
+        <div class="metric-card cyan"><span class="metric-value" id="fs-avg-enc">—</span><span class="metric-label">Avg File Enc (ms)</span></div>
+        <div class="metric-card warning-c"><span class="metric-value" id="fs-avg-hash">—</span><span class="metric-label">Avg SHA-256 (ms)</span></div>
+        <div class="metric-card success-c"><span class="metric-value" id="fs-avg-sig">—</span><span class="metric-label">Avg RSA-PSS Sign (ms)</span></div>
+    </div>
+
+    <!-- Live File Sharing Timings Chart -->
+    <div class="chart-container mt-2">
+        <div class="card-header" style="border:none;padding:0 0 12px 0">
+            <h3 class="card-title">Live Cryptographic Stage Breakdown (ms)</h3>
+        </div>
+        <canvas id="fileSharingChart" style="max-height:300px;"></canvas>
+    </div>
+
+    <!-- Recent File Sharing Performance Log Table -->
+    <div class="table-container mt-2" style="border:none">
+        <table class="data-table" id="fileSharingTable">
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Op</th>
+                    <th>Size</th>
+                    <th>Total Crypto (ms)</th>
+                    <th>AES (ms)</th>
+                    <th>RSA Wrap/Unwrap (ms)</th>
+                    <th>HMAC (ms)</th>
+                    <th>SHA-256 (ms)</th>
+                    <th>RSA-PSS (ms)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td colspan="9" class="text-center text-muted" style="padding:16px">Loading live measurements…</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Standalone Synthetic Benchmark Harness -->
+<div class="card mt-2">
+    <div class="card-header">
+        <h3 class="card-title">🧪 Synthetic AES-256-CBC Throughput Benchmark</h3>
+        <button class="btn btn-primary" id="runBtn" onclick="runBenchmark()">▶ Run Benchmark</button>
+    </div>
+    <p class="text-muted">Runs AES-256-CBC encryption and decryption across synthetic data sizes (1 KB to 5 MB, 5 iterations each). Results are measured in real-time — no hardcoded values.</p>
+    <div id="bench-loading" class="hidden" style="padding:24px;text-align:center">
+        <div class="spinner spinner-lg" style="margin:0 auto 12px"></div>
+        <p class="text-muted">Running benchmarks — this may take 15–30 seconds…</p>
+    </div>
+</div>
+
+<div id="results-section" class="hidden">
+    <!-- Metrics summary -->
+    <div class="metrics-grid" id="summary-metrics"></div>
+
+    <!-- Text benchmark chart -->
+    <div class="chart-container">
+        <div class="card-header" style="border:none;padding:0 0 12px 0">
+            <h3 class="card-title">Text Encryption Throughput</h3>
+            <div class="filter-group">
+                <button class="filter-btn active" onclick="switchTextChart('throughput',this)">Throughput</button>
+                <button class="filter-btn" onclick="switchTextChart('time',this)">Time (ms)</button>
+            </div>
+        </div>
+        <canvas id="textChart"></canvas>
+    </div>
+
+    <!-- Image benchmark chart -->
+    <div class="chart-container">
+        <div class="card-header" style="border:none;padding:0 0 12px 0">
+            <h3 class="card-title">Image Encryption Throughput</h3>
+            <div class="filter-group">
+                <button class="filter-btn active" onclick="switchImgChart('throughput',this)">Throughput</button>
+                <button class="filter-btn" onclick="switchImgChart('time',this)">Time (ms)</button>
+            </div>
+        </div>
+        <canvas id="imgChart"></canvas>
+    </div>
+
+    <!-- Data tables -->
+    <div class="two-col">
+        <div class="card">
+            <div class="card-header"><h3 class="card-title">Text Benchmark Data</h3></div>
+            <div class="table-container" style="border:none">
+                <table class="data-table" id="textTable">
+                    <thead><tr><th>Size</th><th>Enc (ms)</th><th>Dec (ms)</th><th>Enc KB/s</th><th>Dec KB/s</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header"><h3 class="card-title">Image Benchmark Data</h3></div>
+            <div class="table-container" style="border:none">
+                <table class="data-table" id="imgTable">
+                    <thead><tr><th>Size</th><th>Enc (ms)</th><th>Dec (ms)</th><th>Enc KB/s</th><th>Dec KB/s</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let textData=[], imgData=[], textChart=null, imgChart=null, fsChart=null;
+
+const CHART_OPTS = (title, yLabel) => ({
+    responsive:true,
+    plugins:{legend:{labels:{color:'#94a3b8'}},title:{display:true,text:title,color:'#f1f5f9',font:{size:14}}},
+    scales:{
+        x:{grid:{color:'#1e293b'},ticks:{color:'#94a3b8'}},
+        y:{grid:{color:'#1e293b'},ticks:{color:'#94a3b8'},title:{display:true,text:yLabel,color:'#94a3b8'}}
+    }
+});
+
+function makeDataset(data, mode){
+    if(mode==='throughput') return [
+        {label:'Enc KB/s',data:data.map(r=>r.throughput_enc_kbs),borderColor:'#6366f1',backgroundColor:'rgba(99,102,241,.15)',tension:.4,fill:true},
+        {label:'Dec KB/s',data:data.map(r=>r.throughput_dec_kbs),borderColor:'#06b6d4',backgroundColor:'rgba(6,182,212,.1)',tension:.4,fill:true}
+    ];
+    return [
+        {label:'Enc ms',data:data.map(r=>r.avg_enc_ms),borderColor:'#6366f1',backgroundColor:'rgba(99,102,241,.15)',tension:.4,fill:true},
+        {label:'Dec ms',data:data.map(r=>r.avg_dec_ms),borderColor:'#06b6d4',backgroundColor:'rgba(6,182,212,.1)',tension:.4,fill:true}
+    ];
+}
+
+function switchTextChart(mode, btn){
+    document.querySelectorAll('#results-section .filter-group').item(0).querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    textChart.data.datasets = makeDataset(textData, mode);
+    textChart.options.scales.y.title.text = mode==='throughput'?'Throughput (KB/s)':'Time (ms)';
+    textChart.update();
+}
+function switchImgChart(mode, btn){
+    document.querySelectorAll('#results-section .filter-group').item(1).querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    imgChart.data.datasets = makeDataset(imgData, mode);
+    imgChart.options.scales.y.title.text = mode==='throughput'?'Throughput (KB/s)':'Time (ms)';
+    imgChart.update();
+}
+
+function fillTable(id, data){
+    const tbody = document.getElementById(id).querySelector('tbody');
+    tbody.innerHTML = data.map(r=>`<tr>
+        <td>${r.size_label}</td>
+        <td>${r.avg_enc_ms}</td>
+        <td>${r.avg_dec_ms}</td>
+        <td>${r.throughput_enc_kbs.toLocaleString()}</td>
+        <td>${r.throughput_dec_kbs.toLocaleString()}</td>
+    </tr>`).join('');
+}
+
+async function runBenchmark(){
+    const btn = document.getElementById('runBtn');
+    btn.disabled=true; btn.innerHTML='<span class="spinner"></span> Running…';
+    document.getElementById('bench-loading').classList.remove('hidden');
+    document.getElementById('results-section').classList.add('hidden');
+    try{
+        const r = await fetch('/api/performance/run',{method:'POST'});
+        const d = await r.json();
+        if(d.error){showToast(d.error,'error');return;}
+        textData = d.text; imgData = d.image;
+
+        // Summary metrics
+        const maxTextEnc = Math.max(...textData.map(r=>r.throughput_enc_kbs));
+        const maxImgEnc = Math.max(...imgData.map(r=>r.throughput_enc_kbs));
+        document.getElementById('summary-metrics').innerHTML = `
+            <div class="metric-card accent"><span class="metric-value">${(maxTextEnc/1024).toFixed(1)} MB/s</span><span class="metric-label">Peak Text Enc</span></div>
+            <div class="metric-card cyan"><span class="metric-value">${(maxImgEnc/1024).toFixed(1)} MB/s</span><span class="metric-label">Peak Image Enc</span></div>
+            <div class="metric-card success-c"><span class="metric-value">${textData[0].avg_enc_ms} ms</span><span class="metric-label">1 KB Enc Time</span></div>
+            <div class="metric-card warning-c"><span class="metric-value">${textData.length * imgData.length * 5}</span><span class="metric-label">Total Iterations</span></div>
+        `;
+
+        const labels = textData.map(r=>r.size_label);
+        if(textChart) textChart.destroy();
+        textChart = new Chart(document.getElementById('textChart'),{type:'line',data:{labels,datasets:makeDataset(textData,'throughput')},options:CHART_OPTS('Text Encryption (AES-256-CBC)','Throughput (KB/s)')});
+        if(imgChart) imgChart.destroy();
+        imgChart = new Chart(document.getElementById('imgChart'),{type:'line',data:{labels:imgData.map(r=>r.size_label),datasets:makeDataset(imgData,'throughput')},options:CHART_OPTS('Image Encryption (AES-256-CBC)','Throughput (KB/s)')});
+        fillTable('textTable', textData);
+        fillTable('imgTable', imgData);
+        document.getElementById('results-section').classList.remove('hidden');
+        showToast('Benchmark complete!','success');
+    }catch(e){showToast('Benchmark failed: '+e,'error');}
+    finally{
+        btn.disabled=false; btn.innerHTML='▶ Run Benchmark';
+        document.getElementById('bench-loading').classList.add('hidden');
+    }
+}
+
+async function loadFileSharingPerf(){
+    try {
+        const r = await fetch('/api/performance/file-sharing');
+        const rows = await r.json();
+        if(!rows || !rows.length){
+            document.querySelector('#fileSharingTable tbody').innerHTML = '<tr><td colspan="9" class="text-center text-muted" style="padding:16px">No live file sharing operations recorded yet. Upload a file to see real-time metrics.</td></tr>';
+            return;
+        }
+
+        document.getElementById('fs-total-ops').textContent = rows.length;
+        const encRows = rows.filter(r=>r.enc_time_ms != null);
+        const hashRows = rows.filter(r=>r.hash_time_ms != null);
+        const sigRows = rows.filter(r=>r.sig_time_ms != null);
+
+        if(encRows.length){
+            const avgEnc = encRows.reduce((acc, r)=>acc + r.enc_time_ms, 0) / encRows.length;
+            document.getElementById('fs-avg-enc').textContent = avgEnc.toFixed(2) + ' ms';
+        }
+        if(hashRows.length){
+            const avgHash = hashRows.reduce((acc, r)=>acc + r.hash_time_ms, 0) / hashRows.length;
+            document.getElementById('fs-avg-hash').textContent = avgHash.toFixed(2) + ' ms';
+        }
+        if(sigRows.length){
+            const avgSig = sigRows.reduce((acc, r)=>acc + r.sig_time_ms, 0) / sigRows.length;
+            document.getElementById('fs-avg-sig').textContent = avgSig.toFixed(2) + ' ms';
+        }
+
+        // Render Table
+        const tbody = document.querySelector('#fileSharingTable tbody');
+        tbody.innerHTML = rows.slice(0, 15).map(r => `
+            <tr>
+                <td style="font-size:0.75rem;color:var(--text-muted);white-space:nowrap" title="${formatIST(r.timestamp)}">${formatIST(r.timestamp)}</td>
+                <td><span class="badge ${r.operation_type === 'UPLOAD' ? 'badge-accent' : 'badge-success'}">${r.operation_type}</span></td>
+                <td>${(r.file_size_bytes/1024).toFixed(1)} KB</td>
+                <td style="font-weight:600;color:var(--cyan)">${r.crypto_duration_ms ? r.crypto_duration_ms.toFixed(2) : '—'} ms</td>
+                <td>${(r.enc_time_ms || r.dec_time_ms || 0).toFixed(2)} ms</td>
+                <td>${(r.key_wrap_time_ms || r.key_unwrap_time_ms || 0).toFixed(2)} ms</td>
+                <td>${(r.hmac_time_ms || r.hmac_verify_time_ms || 0).toFixed(2)} ms</td>
+                <td>${(r.hash_time_ms || r.hash_verify_time_ms || 0).toFixed(2)} ms</td>
+                <td>${(r.sig_time_ms || r.sig_verify_time_ms || 0).toFixed(2)} ms</td>
+            </tr>
+        `).join('');
+
+        // Render Chart of granular stages
+        const chartRows = rows.slice(0, 8).reverse();
+        const labels = chartRows.map((r, i) => `#${r.id} (${(r.file_size_bytes/1024).toFixed(0)}KB ${r.operation_type})`);
+        
+        if(fsChart) fsChart.destroy();
+        fsChart = new Chart(document.getElementById('fileSharingChart'), {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    { label: 'AES Enc/Dec', data: chartRows.map(r => r.enc_time_ms || r.dec_time_ms || 0), backgroundColor: '#6366f1' },
+                    { label: 'RSA Key Wrap/Unwrap', data: chartRows.map(r => r.key_wrap_time_ms || r.key_unwrap_time_ms || 0), backgroundColor: '#06b6d4' },
+                    { label: 'HMAC Compute/Verify', data: chartRows.map(r => r.hmac_time_ms || r.hmac_verify_time_ms || 0), backgroundColor: '#10b981' },
+                    { label: 'SHA-256 Digest', data: chartRows.map(r => r.hash_time_ms || r.hash_verify_time_ms || 0), backgroundColor: '#f59e0b' },
+                    { label: 'RSA-PSS Sign/Verify', data: chartRows.map(r => r.sig_time_ms || r.sig_verify_time_ms || 0), backgroundColor: '#ec4899' }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: { stacked: true, grid: { color: '#1e293b' }, ticks: { color: '#94a3b8' } },
+                    y: { stacked: true, grid: { color: '#1e293b' }, ticks: { color: '#94a3b8' }, title: { display: true, text: 'Execution Time (ms)', color: '#94a3b8' } }
+                },
+                plugins: {
+                    legend: { labels: { color: '#94a3b8' } }
+                }
+            }
+        });
+    } catch(e) {
+        console.error("Failed to load file sharing performance metrics", e);
+    }
+}
+
+// Auto-load on page ready
+document.addEventListener('DOMContentLoaded', () => {
+    loadFileSharingPerf();
+});
+</script>
+{% endblock %}

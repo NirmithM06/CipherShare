@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% set active_page = "overview" %}
+{% block title %}Overview — CipherShare{% endblock %}
+{% block page_title %}Overview{% endblock %}
+{% block page_subtitle %}System status and quick access to cryptographic modules{% endblock %}
+
+{% block content %}
+<div class="metrics-grid">
+    <div class="metric-card accent">
+        <span class="metric-value">{{ stats.total_users }}</span>
+        <span class="metric-label">Registered Users</span>
+    </div>
+    <div class="metric-card cyan">
+        <span class="metric-value">{{ stats.total_files }}</span>
+        <span class="metric-label">Files Shared</span>
+    </div>
+    <div class="metric-card success-c">
+        <span class="metric-value">{{ stats.total_uploads }}</span>
+        <span class="metric-label">Successful Encryptions</span>
+    </div>
+    <div class="metric-card warning-c">
+        <span class="metric-value">{{ stats.failed_logins }}</span>
+        <span class="metric-label">Failed Logins</span>
+    </div>
+    <div class="metric-card {% if stats.integrity_ok %}success-c{% else %}error-c{% endif %}">
+        <span class="metric-value">{% if stats.integrity_ok %}✓{% else %}✗{% endif %}</span>
+        <span class="metric-label">Integrity Status</span>
+    </div>
+    <div class="metric-card accent">
+        <span class="metric-value">{{ stats.total_signatures }}</span>
+        <span class="metric-label">Digital Signatures</span>
+    </div>
+</div>
+
+<div class="two-col">
+    <div class="card">
+        <div class="card-header"><h3 class="card-title">Cryptographic Modules</h3></div>
+        <div class="quick-links">
+            <a href="{{ url_for('crypto.text_encryption_page') }}" class="quick-link">
+                <svg viewBox="0 0 24 24"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+                Text Encryption
+            </a>
+            <a href="{{ url_for('crypto.image_encryption_page') }}" class="quick-link">
+                <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                Image Encryption
+            </a>
+            <a href="{{ url_for('crypto.security_analysis_page') }}" class="quick-link">
+                <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                Security Analysis
+            </a>
+            <a href="{{ url_for('crypto.hashing_page') }}" class="quick-link">
+                <svg viewBox="0 0 24 24"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>
+                SHA-256 Hashing
+            </a>
+            <a href="{{ url_for('crypto.digital_signatures_page') }}" class="quick-link">
+                <svg viewBox="0 0 24 24"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                Digital Signatures
+            </a>
+            <a href="{{ url_for('crypto.performance_page') }}" class="quick-link">
+                <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                Performance
+            </a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><h3 class="card-title">Encryption Algorithms</h3></div>
+        <div class="result-item"><span class="result-label">Symmetric Cipher</span><span class="result-value text-cyan">AES-256-CBC</span></div>
+        <div class="result-item"><span class="result-label">Key Protection</span><span class="result-value text-cyan">RSA-2048 OAEP</span></div>
+        <div class="result-item"><span class="result-label">Key Derivation</span><span class="result-value text-cyan">HKDF-SHA256</span></div>
+        <div class="result-item"><span class="result-label">Integrity</span><span class="result-value text-cyan">HMAC-SHA256</span></div>
+        <div class="result-item"><span class="result-label">Hash Function</span><span class="result-value text-cyan">SHA-256</span></div>
+        <div class="result-item"><span class="result-label">Digital Signatures</span><span class="result-value text-cyan">RSA-PSS-SHA256</span></div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header"><h3 class="card-title">Recent Activity</h3></div>
+    <div class="table-container" style="border:none">
+        <table class="data-table">
+            <thead><tr><th>Time</th><th>Event</th><th>Status</th><th>User</th><th>Description</th></tr></thead>
+            <tbody>
+            {% for log in recent %}
+            <tr>
+                <td style="font-size:.8rem;color:var(--text-muted);white-space:nowrap" title="{{ log.timestamp|format_ist }}">{{ log.timestamp|format_ist }} <span style="opacity:0.75">({{ log.timestamp|time_ago }})</span></td>
+                <td>
+                    {% if log.event_type in ('IDS_SUSPICIOUS_ACTIVITY','UNAUTHORIZED_ACCESS','INTEGRITY_CHECK_FAILED') %}
+                    <span class="badge badge-danger">{{ log.event_type }}</span>
+                    {% elif log.event_type in ('RATE_LIMIT_EXCEEDED','LOGIN_FAILURE') %}
+                    <span class="badge badge-warning">{{ log.event_type }}</span>
+                    {% else %}
+                    <span class="badge badge-success">{{ log.event_type }}</span>
+                    {% endif %}
+                </td>
+                <td><span class="{% if log.status in ('FAILURE','BLOCKED','TRIGGERED') %}text-error{% else %}text-success{% endif %}">{{ log.status }}</span></td>
+                <td>{{ log.username or '-' }}</td>
+                <td class="text-muted" style="font-size:.85rem">{{ log.description[:80] }}{% if log.description|length > 80 %}…{% endif %}</td>
+            </tr>
+            {% endfor %}
+            {% if not recent %}<tr><td colspan="5" class="text-center text-muted" style="padding:24px">No activity recorded yet.</td></tr>{% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

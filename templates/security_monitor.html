@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% set active_page = "security_monitor" %}
+{% block title %}Security Monitor — CipherShare{% endblock %}
+{% block page_title %}Security Monitor & IDS{% endblock %}
+{% block page_subtitle %}Real-time audit logs, intrusion detection, and rate-limiting{% endblock %}
+
+{% block content %}
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}<ul class="flashes">{% for cat,msg in messages %}<li class="{{ cat }}">{{ msg }}</li>{% endfor %}</ul>{% endif %}
+{% endwith %}
+
+<!-- IDS Status Banner -->
+{% if is_cooldown %}
+<div class="card" style="border-left:4px solid var(--error);margin-bottom:20px">
+    <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-size:1.5rem">⚠️</span>
+        <div>
+            <h4 style="color:var(--error);margin-bottom:2px">Active IP Cooldown</h4>
+            <p class="text-muted">Your IP is under a security cooldown. Remaining: <strong style="color:var(--error)">{{ cooldown_remaining }}s</strong></p>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="card" style="border-left:4px solid var(--success);margin-bottom:20px">
+    <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-size:1.5rem">🛡️</span>
+        <div>
+            <h4 style="color:var(--success);margin-bottom:2px">System Protected</h4>
+            <p class="text-muted">Intrusion Detection System active. Rate limiting enabled. All systems nominal.</p>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Metrics -->
+<div class="metrics-grid">
+    <div class="metric-card accent"><span class="metric-value">{{ total_events }}</span><span class="metric-label">Total Events</span></div>
+    <div class="metric-card error-c"><span class="metric-value">{{ ids_alerts }}</span><span class="metric-label">IDS Alerts</span></div>
+    <div class="metric-card warning-c"><span class="metric-value">{{ rate_limits }}</span><span class="metric-label">Rate Limits</span></div>
+    <div class="metric-card warning-c"><span class="metric-value">{{ failed_logins }}</span><span class="metric-label">Failed Logins</span></div>
+    <div class="metric-card error-c"><span class="metric-value">{{ unauth_events }}</span><span class="metric-label">Unauthorized</span></div>
+    <div class="metric-card error-c"><span class="metric-value">{{ integrity_failures }}</span><span class="metric-label">Integrity Failures</span></div>
+</div>
+
+<!-- Filters + Table -->
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Audit Log</h3>
+        <a href="{{ url_for('security_monitor', filter=filter_category) }}" class="btn btn-sm btn-secondary">Refresh</a>
+    </div>
+    <div class="filter-group">
+        <a href="{{ url_for('security_monitor', filter='all') }}" class="filter-btn {% if filter_category=='all' %}active{% endif %}">All Events</a>
+        <a href="{{ url_for('security_monitor', filter='ids') }}" class="filter-btn {% if filter_category=='ids' %}active{% endif %}">IDS Alerts</a>
+        <a href="{{ url_for('security_monitor', filter='rate_limit') }}" class="filter-btn {% if filter_category=='rate_limit' %}active{% endif %}">Rate Limits</a>
+        <a href="{{ url_for('security_monitor', filter='auth') }}" class="filter-btn {% if filter_category=='auth' %}active{% endif %}">Authentication</a>
+        <a href="{{ url_for('security_monitor', filter='files') }}" class="filter-btn {% if filter_category=='files' %}active{% endif %}">File Security</a>
+    </div>
+    <div class="table-container" style="border:none">
+        <table class="audit-table">
+            <thead>
+                <tr><th>ID</th><th>Timestamp</th><th>Event Type</th><th>Status</th><th>Source IP</th><th>User</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td style="color:var(--text-muted)">#{{ log.id }}</td>
+                    <td style="font-size:.8rem;color:var(--text-muted);white-space:nowrap" title="{{ log.timestamp|format_ist }}">{{ log.timestamp|format_ist }}</td>
+                    <td>
+                        {% if log.event_type in ('IDS_SUSPICIOUS_ACTIVITY','UNAUTHORIZED_ACCESS','INTEGRITY_CHECK_FAILED') %}
+                        <span class="badge badge-danger">{{ log.event_type }}</span>
+                        {% elif log.event_type in ('RATE_LIMIT_EXCEEDED','LOGIN_RATE_LIMITED','LOGIN_FAILURE') %}
+                        <span class="badge badge-warning">{{ log.event_type }}</span>
+                        {% else %}
+                        <span class="badge badge-success">{{ log.event_type }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if log.status in ('TRIGGERED','BLOCKED','FAILURE') %}
+                        <span class="status-cooldown">{{ log.status }}</span>
+                        {% else %}
+                        <span class="status-ok">{{ log.status }}</span>
+                        {% endif %}
+                    </td>
+                    <td style="font-family:monospace;font-size:.85rem">{{ log.ip_address or '—' }}</td>
+                    <td>{{ log.username or (log.user_id if log.user_id else '—') }}</td>
+                    <td style="font-size:.85rem;word-break:break-word;max-width:300px">{{ log.description }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="7" class="text-center text-muted" style="padding:24px">No audit log records found for the selected filter.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

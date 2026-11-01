@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% set active_page = "security_analysis" %}
+{% block title %}Security Analysis — CipherShare{% endblock %}
+{% block page_title %}Security Analysis{% endblock %}
+{% block page_subtitle %}Confusion, Diffusion, and Avalanche Effect measurements using AES-256-CBC{% endblock %}
+
+{% block content %}
+<!-- Confusion -->
+<div class="card" id="confusionCard">
+    <div class="card-header">
+        <h3 class="card-title">🔀 Confusion Analysis</h3>
+        <button class="btn btn-sm btn-primary" onclick="runConfusion()">Run Experiment</button>
+    </div>
+    <p class="text-muted mb-2">Same plaintext encrypted with two different keys. Demonstrates how key changes affect ciphertext.</p>
+    <div id="confusion-result" class="hidden">
+        <div class="metrics-grid">
+            <div class="metric-card accent"><span class="metric-value" id="conf-bit-pct">—</span><span class="metric-label">Bit Change %</span></div>
+            <div class="metric-card cyan"><span class="metric-value" id="conf-bits">—</span><span class="metric-label">Changed / Total Bits</span></div>
+            <div class="metric-card warning-c"><span class="metric-value" id="conf-char-pct">—</span><span class="metric-label">Char Change %</span></div>
+        </div>
+        <div class="two-col">
+            <div><label class="text-muted" style="font-size:.8rem">Ciphertext 1 (Key 1)</label><div class="code-block" id="conf-ct1" style="font-size:.7rem"></div></div>
+            <div><label class="text-muted" style="font-size:.8rem">Ciphertext 2 (Key 2)</label><div class="code-block" id="conf-ct2" style="font-size:.7rem"></div></div>
+        </div>
+        <p class="text-muted mt-2" id="conf-note" style="font-size:.8rem;font-style:italic"></p>
+    </div>
+</div>
+
+<!-- Diffusion -->
+<div class="card" id="diffusionCard">
+    <div class="card-header">
+        <h3 class="card-title">🌊 Diffusion Analysis</h3>
+        <button class="btn btn-sm btn-primary" onclick="runDiffusion()">Run Experiment</button>
+    </div>
+    <p class="text-muted mb-2">One bit of plaintext is flipped; same key used. Demonstrates how input changes propagate through ciphertext.</p>
+    <div id="diffusion-result" class="hidden">
+        <div class="metrics-grid">
+            <div class="metric-card accent"><span class="metric-value" id="diff-bit-pct">—</span><span class="metric-label">Bit Change %</span></div>
+            <div class="metric-card cyan"><span class="metric-value" id="diff-bits">—</span><span class="metric-label">Changed / Total Bits</span></div>
+            <div class="metric-card warning-c"><span class="metric-value" id="diff-char-pct">—</span><span class="metric-label">Char Change %</span></div>
+        </div>
+        <div class="two-col">
+            <div><label class="text-muted" style="font-size:.8rem">Ciphertext (Original plaintext)</label><div class="code-block" id="diff-ct1" style="font-size:.7rem"></div></div>
+            <div><label class="text-muted" style="font-size:.8rem">Ciphertext (Modified plaintext — 1 bit flip)</label><div class="code-block" id="diff-ct2" style="font-size:.7rem"></div></div>
+        </div>
+        <p class="text-muted mt-2" id="diff-note" style="font-size:.8rem;font-style:italic"></p>
+    </div>
+</div>
+
+<!-- Avalanche Effect -->
+<div class="card" id="avalancheCard">
+    <div class="card-header">
+        <h3 class="card-title">🏔️ Avalanche Effect</h3>
+        <button class="btn btn-sm btn-primary" onclick="runAvalanche()">Run Experiment</button>
+    </div>
+    <p class="text-muted mb-2">Flip exactly 1 bit in plaintext or key and measure ciphertext differences. Ideal ≈ 50%.</p>
+    <div id="avalanche-result" class="hidden">
+        <div class="two-col">
+            <!-- Plaintext avalanche -->
+            <div class="card" style="margin-bottom:0">
+                <h4 class="mb-2">Plaintext Avalanche</h4>
+                <div class="flex-center mb-2">
+                    <div class="pct-ring" id="av-pt-ring" style="--pct:0"><span class="pct-val" id="av-pt-pct">—</span></div>
+                </div>
+                <div class="result-item"><span class="result-label">Changed Bits</span><span class="result-value" id="av-pt-bits">—</span></div>
+                <div class="result-item"><span class="result-label">Total Bits</span><span class="result-value" id="av-pt-total">—</span></div>
+                <div class="result-item"><span class="result-label">Char Change %</span><span class="result-value" id="av-pt-char">—</span></div>
+                <div class="result-item"><span class="result-label">Ideal</span><span class="result-value text-accent">50.00%</span></div>
+            </div>
+            <!-- Key avalanche -->
+            <div class="card" style="margin-bottom:0">
+                <h4 class="mb-2">Key Avalanche</h4>
+                <div class="flex-center mb-2">
+                    <div class="pct-ring" id="av-key-ring" style="--pct:0"><span class="pct-val" id="av-key-pct">—</span></div>
+                </div>
+                <div class="result-item"><span class="result-label">Changed Bits</span><span class="result-value" id="av-key-bits">—</span></div>
+                <div class="result-item"><span class="result-label">Total Bits</span><span class="result-value" id="av-key-total">—</span></div>
+                <div class="result-item"><span class="result-label">Char Change %</span><span class="result-value" id="av-key-char">—</span></div>
+                <div class="result-item"><span class="result-label">Ideal</span><span class="result-value text-accent">50.00%</span></div>
+            </div>
+        </div>
+        <div class="chart-container mt-2"><canvas id="avalancheChart"></canvas></div>
+        <p class="text-muted mt-1" id="av-note" style="font-size:.8rem;font-style:italic"></p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function runConfusion(){
+    try{
+        const r=await fetch('/api/analysis/confusion',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+        const d=await r.json(); if(d.error){showToast(d.error,'error');return;}
+        document.getElementById('conf-bit-pct').textContent=d.bit_change_percentage+'%';
+        document.getElementById('conf-bits').textContent=d.changed_bits+' / '+d.total_bits;
+        document.getElementById('conf-char-pct').textContent=d.char_change_percentage+'%';
+        document.getElementById('conf-ct1').textContent=d.ciphertext1_hex;
+        document.getElementById('conf-ct2').textContent=d.ciphertext2_hex;
+        document.getElementById('conf-note').textContent=d.note;
+        document.getElementById('confusion-result').classList.remove('hidden');
+        showToast('Confusion analysis complete','success');
+    }catch(e){showToast('Failed','error');}
+}
+async function runDiffusion(){
+    try{
+        const r=await fetch('/api/analysis/diffusion',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+        const d=await r.json(); if(d.error){showToast(d.error,'error');return;}
+        document.getElementById('diff-bit-pct').textContent=d.bit_change_percentage+'%';
+        document.getElementById('diff-bits').textContent=d.changed_bits+' / '+d.total_bits;
+        document.getElementById('diff-char-pct').textContent=d.char_change_percentage+'%';
+        document.getElementById('diff-ct1').textContent=d.ciphertext1_hex;
+        document.getElementById('diff-ct2').textContent=d.ciphertext2_hex;
+        document.getElementById('diff-note').textContent=d.note;
+        document.getElementById('diffusion-result').classList.remove('hidden');
+        showToast('Diffusion analysis complete','success');
+    }catch(e){showToast('Failed','error');}
+}
+let avChart=null;
+async function runAvalanche(){
+    try{
+        const r=await fetch('/api/analysis/avalanche',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+        const d=await r.json(); if(d.error){showToast(d.error,'error');return;}
+        const pa=d.plaintext_avalanche, ka=d.key_avalanche;
+        document.getElementById('av-pt-pct').textContent=pa.avalanche_percentage+'%';
+        document.getElementById('av-pt-ring').style.setProperty('--pct',pa.avalanche_percentage);
+        document.getElementById('av-pt-bits').textContent=pa.changed_bits;
+        document.getElementById('av-pt-total').textContent=pa.total_bits;
+        document.getElementById('av-pt-char').textContent=pa.char_change_percentage+'%';
+        document.getElementById('av-key-pct').textContent=ka.avalanche_percentage+'%';
+        document.getElementById('av-key-ring').style.setProperty('--pct',ka.avalanche_percentage);
+        document.getElementById('av-key-bits').textContent=ka.changed_bits;
+        document.getElementById('av-key-total').textContent=ka.total_bits;
+        document.getElementById('av-key-char').textContent=ka.char_change_percentage+'%';
+        document.getElementById('av-note').textContent=d.note;
+        document.getElementById('avalanche-result').classList.remove('hidden');
+        // Chart
+        if(avChart) avChart.destroy();
+        avChart=new Chart(document.getElementById('avalancheChart'),{type:'bar',data:{labels:['Plaintext Avalanche','Key Avalanche','Ideal'],datasets:[{label:'Avalanche %',data:[pa.avalanche_percentage,ka.avalanche_percentage,d.ideal_percentage],backgroundColor:['rgba(99,102,241,.7)','rgba(6,182,212,.7)','rgba(16,185,129,.4)'],borderColor:['#6366f1','#06b6d4','#10b981'],borderWidth:2,borderRadius:6}]},options:{responsive:true,plugins:{legend:{display:false},title:{display:true,text:'Avalanche Effect Comparison',color:'#f1f5f9'}},scales:{y:{beginAtZero:true,max:100,title:{display:true,text:'Percentage (%)',color:'#94a3b8'},grid:{color:'#1e293b'}},x:{grid:{display:false}}}}});
+        showToast('Avalanche analysis complete','success');
+    }catch(e){showToast('Failed','error');}
+}
+</script>
+{% endblock %}

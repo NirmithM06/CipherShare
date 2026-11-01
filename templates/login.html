@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login — CipherShare</title>
+    <meta name="description" content="Sign in to your CipherShare secure end-to-end cryptographic account">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div class="auth-page">
+    <main class="auth-card fade-in">
+        <!-- Visual Hierarchy: Brand & Header -->
+        <header class="auth-header">
+            <div class="auth-brand-badge">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+                <span>Zero-Knowledge Vault</span>
+            </div>
+            <div class="auth-logo-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="white">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" fill="none" stroke="white" stroke-width="2"/>
+                </svg>
+            </div>
+            <h1 class="auth-title">Welcome Back</h1>
+            <p class="auth-subtitle">Sign in to access your encrypted inbox and secure transfers</p>
+        </header>
+
+        <!-- Flash Alert Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <ul class="flashes">
+            {% for cat, msg in messages %}
+            <li class="{{ cat }}">
+                {% if cat == 'error' %}
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--error)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px;">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                {% else %}
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px;">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+                {% endif %}
+                <span>{{ msg }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+        {% endwith %}
+
+        <!-- Login Form -->
+        <form method="post" action="{{ url_for('auth.login') }}" class="auth-form" id="loginForm">
+            <!-- Username Input Field -->
+            <div class="form-group">
+                <label for="username">Username</label>
+                <div class="input-icon-wrapper">
+                    <svg class="input-prefix-icon" viewBox="0 0 24 24">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                    <input 
+                        type="text" 
+                        id="username" 
+                        name="username" 
+                        class="form-control input-with-icon" 
+                        placeholder="Enter your username" 
+                        required 
+                        autocomplete="username"
+                        spellcheck="false"
+                        autofocus
+                    >
+                </div>
+            </div>
+
+            <!-- Password Input Field with Visibility Toggle -->
+            <div class="form-group">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                    <label for="password" style="margin-bottom:0;">Password</label>
+                </div>
+                <div class="input-icon-wrapper">
+                    <svg class="input-prefix-icon" viewBox="0 0 24 24">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="password" 
+                        class="form-control input-with-icon input-with-toggle" 
+                        placeholder="Enter your password" 
+                        required 
+                        autocomplete="current-password"
+                    >
+                    <button 
+                        type="button" 
+                        class="password-toggle-btn" 
+                        id="passwordToggleBtn"
+                        onclick="togglePasswordVisibility('password', this)" 
+                        title="Show or hide password" 
+                        aria-label="Toggle password visibility"
+                        tabindex="-1"
+                    >
+                        <!-- Eye Icon (hidden state) -->
+                        <svg class="eye-show" viewBox="0 0 24 24">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                        <!-- Eye Off Icon (visible state, hidden by default) -->
+                        <svg class="eye-hide hidden" viewBox="0 0 24 24">
+                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                            <line x1="1" y1="1" x2="23" y2="23"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Submit Button with Dynamic Loading Feedback -->
+            <button type="submit" id="submitBtn" class="btn btn-primary btn-lg" style="width:100%;justify-content:center;margin-top:6px;">
+                <span id="btnText">Sign In</span>
+                <svg id="btnIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                    <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+            </button>
+        </form>
+
+        <!-- Navigation and Links -->
+        <footer class="auth-links">
+            <div>
+                Don't have an account? 
+                <a href="{{ url_for('auth.register') }}" style="font-weight:600;">Create an account</a>
+            </div>
+            <div style="margin-top:14px;font-size:0.8rem;">
+                <a href="{{ url_for('index') }}" style="color:var(--text-muted);display:inline-flex;align-items:center;gap:4px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="19" y1="12" x2="5" y2="12"></line>
+                        <polyline points="12 19 5 12 12 5"></polyline>
+                    </svg>
+                    <span>Back to Homepage</span>
+                </a>
+            </div>
+        </footer>
+    </main>
+</div>
+
+<script>
+/**
+ * Toggle password input visibility between 'password' and 'text'.
+ */
+function togglePasswordVisibility(inputId, btn) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const isPassword = input.type === 'password';
+    input.type = isPassword ? 'text' : 'password';
+    
+    const eyeShow = btn.querySelector('.eye-show');
+    const eyeHide = btn.querySelector('.eye-hide');
+    if (eyeShow && eyeHide) {
+        eyeShow.classList.toggle('hidden', isPassword);
+        eyeHide.classList.toggle('hidden', !isPassword);
+    }
+}
+
+// Immediate visual loading feedback on form submission
+document.getElementById('loginForm').addEventListener('submit', function(e) {
+    const btn = document.getElementById('submitBtn');
+    const btnText = document.getElementById('btnText');
+    const btnIcon = document.getElementById('btnIcon');
+    if (btn && btnText) {
+        btnText.innerHTML = '<span class="spinner-sm" style="margin-right:8px;"></span>Authenticating&hellip;';
+        if (btnIcon) btnIcon.classList.add('hidden');
+    }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% set active_page = "hashing" %}
+{% block title %}SHA-256 Hashing — CipherShare{% endblock %}
+{% block page_title %}SHA-256 Hashing{% endblock %}
+{% block page_subtitle %}Hash generation and security property demonstrations{% endblock %}
+
+{% block content %}
+<!-- Hash Generation -->
+<div class="card">
+    <div class="card-header"><h3 class="card-title"># Hash Generation</h3></div>
+    <div class="form-group">
+        <label for="hashInput">Enter text to hash</label>
+        <textarea id="hashInput" class="form-control" rows="4" placeholder="Type text here…"></textarea>
+    </div>
+    <button class="btn btn-primary" onclick="generateHash()">Generate SHA-256</button>
+    <div id="hash-result" class="hidden mt-2">
+        <div class="form-group">
+            <label>SHA-256 Digest</label>
+            <div class="code-block flex-between" style="cursor:pointer" onclick="copyToClipboard(document.getElementById('hashDigest').textContent)">
+                <span id="hashDigest"></span>
+            </div>
+        </div>
+        <div class="result-item"><span class="result-label">Digest Length</span><span class="result-value" id="hashLen">—</span></div>
+        <div class="result-item"><span class="result-label">Bits</span><span class="result-value" id="hashBits">—</span></div>
+        <div class="result-item"><span class="result-label">Generation Time</span><span class="result-value" id="hashTime">—</span></div>
+    </div>
+</div>
+
+<!-- Modify & Compare -->
+<div class="card">
+    <div class="card-header"><h3 class="card-title">🔄 Modify Input & Compare</h3></div>
+    <p class="text-muted mb-2">Modify the text even slightly and regenerate to see how the hash changes completely.</p>
+    <div class="two-col" id="compare-section" style="display:none">
+        <div><label class="text-muted" style="font-size:.8rem">Previous Hash</label><div class="code-block" id="prevHash" style="font-size:.75rem;color:var(--text-muted)"></div></div>
+        <div><label class="text-muted" style="font-size:.8rem">Current Hash</label><div class="code-block" id="currHash" style="font-size:.75rem;color:var(--success)"></div></div>
+    </div>
+</div>
+
+<!-- Security Properties -->
+<div class="three-col">
+    <!-- Pre-image Resistance -->
+    <div class="card">
+        <div class="card-header"><h3 class="card-title">🛡️ Pre-image Resistance</h3></div>
+        <p class="text-muted mb-2">Given a hash, finding the original input is computationally infeasible.</p>
+        <div class="form-group">
+            <label>Target hash prefix (hex)</label>
+            <input type="text" id="preimagePrefix" class="form-control" value="ab" maxlength="5" placeholder="e.g. ab">
+        </div>
+        <button class="btn btn-sm btn-primary" onclick="runPreimage()">Run Demo</button>
+        <div id="preimage-result" class="hidden mt-2">
+            <div class="result-item"><span class="result-label">Found</span><span class="result-value" id="pi-found">—</span></div>
+            <div class="result-item"><span class="result-label">Attempts</span><span class="result-value" id="pi-attempts">—</span></div>
+            <div class="result-item"><span class="result-label">Time</span><span class="result-value" id="pi-time">—</span></div>
+            <div id="pi-match" class="hidden mt-1"><label class="text-muted" style="font-size:.75rem">Found Hash</label><div class="code-block" id="pi-hash" style="font-size:.7rem"></div></div>
+            <p class="text-muted mt-1" id="pi-note" style="font-size:.75rem;font-style:italic"></p>
+        </div>
+    </div>
+
+    <!-- Second Pre-image -->
+    <div class="card">
+        <div class="card-header"><h3 class="card-title">🔐 Second Pre-image</h3></div>
+        <p class="text-muted mb-2">Finding another input with the same hash as a given message is infeasible.</p>
+        <div class="form-group">
+            <label>Original message</label>
+            <input type="text" id="sp-message" class="form-control" value="Hello World" placeholder="e.g. Hello World">
+        </div>
+        <button class="btn btn-sm btn-primary" onclick="runSecondPreimage()">Run Demo</button>
+        <div id="sp-result" class="hidden mt-2">
+            <div class="result-item"><span class="result-label">Found</span><span class="result-value" id="sp-found">—</span></div>
+            <div class="result-item"><span class="result-label">Attempts</span><span class="result-value" id="sp-attempts">—</span></div>
+            <div class="result-item"><span class="result-label">Time</span><span class="result-value" id="sp-time">—</span></div>
+            <p class="text-muted mt-1" id="sp-note" style="font-size:.75rem;font-style:italic"></p>
+        </div>
+    </div>
+
+    <!-- Collision Resistance -->
+    <div class="card">
+        <div class="card-header"><h3 class="card-title">💥 Collision Resistance</h3></div>
+        <p class="text-muted mb-2">Finding any two messages with the same hash should be infeasible.</p>
+        <div class="form-group">
+            <label>Truncated hash bits (toy demo)</label>
+            <select id="col-bits" class="form-control"><option value="16">16 bits</option><option value="20">20 bits</option><option value="24">24 bits</option></select>
+        </div>
+        <button class="btn btn-sm btn-primary" onclick="runCollision()">Run Demo</button>
+        <div id="col-result" class="hidden mt-2">
+            <div class="result-item"><span class="result-label">Collision Found</span><span class="result-value" id="col-found">—</span></div>
+            <div class="result-item"><span class="result-label">Attempts</span><span class="result-value" id="col-attempts">—</span></div>
+            <div class="result-item"><span class="result-label">Expected (Birthday)</span><span class="result-value" id="col-expected">—</span></div>
+            <div class="result-item"><span class="result-label">Time</span><span class="result-value" id="col-time">—</span></div>
+            <div class="result-item"><span class="result-label">Full Hashes Differ</span><span class="result-value" id="col-differ">—</span></div>
+            <p class="text-muted mt-1" id="col-note" style="font-size:.75rem;font-style:italic"></p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let prevDigest=null;
+async function generateHash(){
+    const text=document.getElementById('hashInput').value;
+    if(!text){showToast('Enter text','error');return;}
+    const r=await fetch('/api/hash/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
+    const d=await r.json(); if(d.error){showToast(d.error,'error');return;}
+    if(prevDigest){
+        document.getElementById('prevHash').textContent=prevDigest;
+        document.getElementById('currHash').textContent=d.digest;
+        document.getElementById('compare-section').style.display='';
+    }
+    prevDigest=d.digest;
+    document.getElementById('hashDigest').textContent=d.digest;
+    document.getElementById('hashLen').textContent=d.digest_length+' hex chars';
+    document.getElementById('hashBits').textContent=d.digest_bits;
+    document.getElementById('hashTime').textContent=d.generation_time_ms+' ms';
+    document.getElementById('hash-result').classList.remove('hidden');
+    showToast('SHA-256 hash generated','success');
+}
+async function runPreimage(){
+    const prefix=document.getElementById('preimagePrefix').value.trim();
+    if(!prefix){showToast('Enter prefix','error');return;}
+    showToast('Running pre-image search…','info');
+    const r=await fetch('/api/hash/preimage',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prefix})});
+    const d=await r.json(); if(d.error){showToast(d.error,'error');return;}
+    document.getElementById('pi-found').innerHTML=d.found?'<span class="text-success">Yes</span>':'<span class="text-error">No</span>';
+    document.getElementById('pi-attempts').textContent=d.attempts.toLocaleString();
+    document.getElementById('pi-time').textContent=d.time_ms+' ms';
+    if(d.found_hash){document.getElementById('pi-hash').textContent=d.found_hash;document.getElementById('pi-match').classList.remove('hidden');}
+    document.getElementById('pi-note').textContent=d.note;
+    document.getElementById('preimage-result').classList.remove('hidden');
+}
+async function runSecondPreimage(){
+    const msg=document.getElementById('sp-message').value.trim();
+    if(!msg){showToast('Enter message','error');return;}
+    showToast('Running second pre-image search…','info');
+    const r=await fetch('/api/hash/second-preimage',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg})});
+    const d=await r.json(); if(d.error){showToast(d.error,'error');return;}
+    document.getElementById('sp-found').innerHTML=d.found?'<span class="text-success">Yes (truncated)</span>':'<span class="text-error">No</span>';
+    document.getElementById('sp-attempts').textContent=d.attempts.toLocaleString();
+    document.getElementById('sp-time').textContent=d.time_ms+' ms';
+    document.getElementById('sp-note').textContent=d.note;
+    document.getElementById('sp-result').classList.remove('hidden');
+}
+async function runCollision(){
+    const bits=document.getElementById('col-bits').value;
+    showToast('Running birthday attack…','info');
+    const r=await fetch('/api/hash/collision',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bits:parseInt(bits)})});
+    const d=await r.json(); if(d.error){showToast(d.error,'error');return;}
+    document.getElementById('col-found').innerHTML=d.found?'<span class="text-success">Yes</span>':'<span class="text-error">No</span>';
+    document.getElementById('col-attempts').textContent=d.attempts.toLocaleString();
+    document.getElementById('col-expected').textContent=d.expected_attempts;
+    document.getElementById('col-time').textContent=d.time_ms+' ms';
+    document.getElementById('col-differ').innerHTML=d.full_hashes_differ?'<span class="text-success">Yes (full SHA-256 differs)</span>':'—';
+    document.getElementById('col-note').textContent=d.note;
+    document.getElementById('col-result').classList.remove('hidden');
+}
+</script>
+{% endblock %}
